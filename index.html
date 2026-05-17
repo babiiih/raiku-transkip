@@ -455,6 +455,151 @@ async function loadSessions(){
 
     const res = await fetch(API_URL);
 
+    const text = await res.text();
+
+    console.log("RAW TEXT:", text);
+
+    let raw;
+
+    try{
+
+      raw = JSON.parse(text);
+
+    }catch{
+
+      raw = {
+        text
+      };
+
+    }
+
+    let data = raw;
+
+    // FIX CORS PROXY WRAPPER
+    if(
+      raw &&
+      typeof raw.contents === "string"
+    ){
+
+      try{
+
+        data = JSON.parse(raw.contents);
+
+      }catch{
+
+        data = raw.contents;
+
+      }
+
+    }
+
+    console.log("PARSED DATA:", data);
+
+    // IF PLAIN TEXT RESPONSE
+    if(typeof data === "string"){
+
+      const lines =
+        data
+        .split("\n")
+        .filter(
+          line => line.trim()
+        );
+
+      SESSIONS = [{
+
+        id:1,
+
+        name:"Raiku Transcript",
+
+        logs:lines.map(
+          (line,index)=>({
+
+            speaker:"Live",
+
+            text:line,
+
+            time:
+              Date.now() + index
+
+          })
+        )
+
+      }];
+
+    }
+
+    // IF JSON STRUCTURE
+    else if(
+      Array.isArray(
+        data.sessions
+      )
+    ){
+
+      SESSIONS =
+        data.sessions;
+
+    }
+
+    else if(
+      Array.isArray(data)
+    ){
+
+      SESSIONS = data;
+
+    }
+
+    else{
+
+      SESSIONS = [data];
+
+    }
+
+    renderSidebar();
+
+    if(SESSIONS.length){
+
+      openSession(
+        SESSIONS[0].id ||
+        SESSIONS[0]._id ||
+        1
+      );
+
+    }
+
+  }catch(err){
+
+    console.error(err);
+
+    document.getElementById(
+      "mainPanel"
+    ).innerHTML = `
+
+      <div class="empty">
+
+        <div class="empty-logo">
+          !
+        </div>
+
+        <h2>
+          Failed to load
+        </h2>
+
+        <p>
+          ${err.message}
+        </p>
+
+      </div>
+
+    `;
+
+  }
+
+}
+
+  try{
+
+    const res = await fetch(API_URL);
+
     const raw = await res.json();
 
     console.log("RAW API:", raw);
