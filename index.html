@@ -455,17 +455,63 @@ async function loadSessions(){
 
     const res = await fetch(API_URL);
 
-    const data = await res.json();
+    const raw = await res.json();
 
-    SESSIONS = Array.isArray(data)
-      ? data
-      : [data];
+    console.log("RAW API:", raw);
+
+    let data = raw;
+
+    // FIX CORS PROXY WRAPPER
+    if(
+      raw &&
+      typeof raw.contents === "string"
+    ){
+
+      try{
+
+        data = JSON.parse(raw.contents);
+
+      }catch{
+
+        console.log(
+          "contents is not valid json"
+        );
+
+        data = raw;
+
+      }
+
+    }
+
+    console.log("PARSED DATA:", data);
+
+    // FIX STRUCTURE
+    if(Array.isArray(data.sessions)){
+
+      SESSIONS = data.sessions;
+
+    }else if(Array.isArray(data)){
+
+      SESSIONS = data;
+
+    }else{
+
+      SESSIONS = [data];
+
+    }
 
     renderSidebar();
 
-    if(!currentSession && SESSIONS.length){
+    if(
+      !currentSession &&
+      SESSIONS.length
+    ){
 
-      openSession(SESSIONS[0].id);
+      openSession(
+        SESSIONS[0].id ||
+        SESSIONS[0]._id ||
+        0
+      );
 
     }
 
@@ -473,12 +519,22 @@ async function loadSessions(){
 
     console.error(err);
 
-    document.getElementById("mainPanel").innerHTML = `
+    document.getElementById(
+      "mainPanel"
+    ).innerHTML = `
+
       <div class="empty">
+
         <div class="empty-logo">!</div>
+
         <h2>Failed to load</h2>
-        <p>Cannot connect to transcript API.</p>
+
+        <p>
+          ${err.message}
+        </p>
+
       </div>
+
     `;
 
   }
@@ -487,31 +543,60 @@ async function loadSessions(){
 
 function renderSidebar(){
 
-  const el = document.getElementById("sessionList");
+  const el =
+    document.getElementById(
+      "sessionList"
+    );
 
   el.innerHTML = "";
 
   SESSIONS.forEach(session => {
 
-    const div = document.createElement("div");
+    const logs =
+      session.logs ||
+      session.messages ||
+      session.transcripts ||
+      [];
+
+    const sessionId =
+      session.id ||
+      session._id ||
+      0;
+
+    const div =
+      document.createElement("div");
 
     div.className =
       "session " +
-      (currentSession === session.id ? "active" : "");
+      (
+        currentSession === sessionId
+        ? "active"
+        : ""
+      );
 
     div.innerHTML = `
+
       <div class="session-title">
-        ${session.name || "Untitled Session"}
+
+        ${
+          session.name ||
+          session.title ||
+          "Live Session"
+        }
+
       </div>
 
       <div class="session-meta">
-        ${session.logs?.length || 0} messages
+
+        ${logs.length} messages
+
       </div>
+
     `;
 
     div.onclick = () => {
 
-      openSession(session.id);
+      openSession(sessionId);
 
     };
 
@@ -528,53 +613,111 @@ function openSession(id){
   renderSidebar();
 
   const session =
-    SESSIONS.find(s => s.id === id);
+    SESSIONS.find(
+      s =>
+      (
+        s.id ||
+        s._id ||
+        0
+      ) === id
+    );
 
   if(!session) return;
 
-  const logs = session.logs || [];
+  const logs =
+    session.logs ||
+    session.messages ||
+    session.transcripts ||
+    [];
 
-  document.getElementById("mainPanel").innerHTML = `
+  document.getElementById(
+    "mainPanel"
+  ).innerHTML = `
 
     <div class="topbar">
 
-      <h2>${session.name}</h2>
+      <h2>
+
+        ${
+          session.name ||
+          session.title ||
+          "Live Session"
+        }
+
+      </h2>
 
       <p>
-        ${logs.length} transcript messages
+
+        ${logs.length}
+        transcript messages
+
       </p>
 
     </div>
 
-    <div class="messages" id="messages"></div>
+    <div
+      class="messages"
+      id="messages"
+    ></div>
 
   `;
 
   const messages =
-    document.getElementById("messages");
+    document.getElementById(
+      "messages"
+    );
 
   logs.forEach(log => {
 
-    const div = document.createElement("div");
+    const div =
+      document.createElement("div");
 
     div.className = "message";
 
     div.innerHTML = `
+
       <div class="message-head">
 
         <div class="speaker">
-          ${escapeHtml(log.speaker || "Unknown")}
+
+          ${
+            escapeHtml(
+              log.speaker ||
+              log.user ||
+              log.username ||
+              "Unknown"
+            )
+          }
+
         </div>
 
         <div class="time">
-          ${formatTime(log.time)}
+
+          ${
+            formatTime(
+              log.time ||
+              log.timestamp ||
+              log.createdAt
+            )
+          }
+
         </div>
 
       </div>
 
       <div class="bubble">
-        ${escapeHtml(log.text || "")}
+
+        ${
+          escapeHtml(
+            log.text ||
+            log.message ||
+            log.content ||
+            ""
+          )
+        }
+
       </div>
+
     `;
 
     messages.appendChild(div);
@@ -587,17 +730,25 @@ function formatTime(date){
 
   if(!date) return "";
 
-  return new Date(date)
-  .toLocaleTimeString([],{
-    hour:"2-digit",
-    minute:"2-digit"
-  });
+  try{
+
+    return new Date(date)
+    .toLocaleTimeString([],{
+      hour:"2-digit",
+      minute:"2-digit"
+    });
+
+  }catch{
+
+    return "";
+
+  }
 
 }
 
 function escapeHtml(str){
 
-  return str
+  return String(str)
     .replace(/&/g,"&amp;")
     .replace(/</g,"&lt;")
     .replace(/>/g,"&gt;")
@@ -606,31 +757,39 @@ function escapeHtml(str){
 
 document
 .getElementById("searchInput")
-.addEventListener("input", e => {
+.addEventListener(
+  "input",
+  e => {
 
-  const value =
-    e.target.value.toLowerCase();
+    const value =
+      e.target.value.toLowerCase();
 
-  const bubbles =
-    document.querySelectorAll(".bubble");
+    const messages =
+      document.querySelectorAll(
+        ".message"
+      );
 
-  bubbles.forEach(b => {
+    messages.forEach(msg => {
 
-    const text =
-      b.textContent.toLowerCase();
+      const text =
+        msg.textContent.toLowerCase();
 
-    b.parentElement.style.display =
-      text.includes(value)
-      ? "block"
-      : "none";
+      msg.style.display =
+        text.includes(value)
+        ? "block"
+        : "none";
 
-  });
+    });
 
-});
+  }
+);
 
 loadSessions();
 
-setInterval(loadSessions, 30000);
+setInterval(
+  loadSessions,
+  30000
+);
 
 </script>
 
