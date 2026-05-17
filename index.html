@@ -1,0 +1,579 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+
+  <title>Raiku Live Transcript</title>
+
+  <style>
+    :root{
+      --green:#b7ff3c;
+      --green-soft:rgba(183,255,60,.08);
+      --bg:#050505;
+      --bg2:#0d0d0d;
+      --bg3:#151515;
+      --border:#232323;
+      --text:#f5f5f5;
+      --muted:#8b8b8b;
+      --dim:#666;
+      --shadow:0 10px 30px rgba(0,0,0,.35);
+    }
+
+    *{ margin:0; padding:0; box-sizing:border-box; }
+
+    body{
+      font-family:Inter,sans-serif;
+      background: radial-gradient(circle at top right, rgba(183,255,60,.06), transparent 20%), var(--bg);
+      color:var(--text);
+      height:100vh;
+      overflow:hidden;
+      display:flex;
+      flex-direction:column;
+    }
+
+    header{
+      height:64px;
+      display:flex;
+      align-items:center;
+      justify-content:space-between;
+      padding:0 24px;
+      background:rgba(10,10,10,.9);
+      border-bottom:1px solid var(--border);
+      backdrop-filter:blur(16px);
+      flex-shrink:0;
+    }
+
+    .logo{ display:flex; align-items:center; gap:12px; }
+
+    .logo-box{
+      width:38px; height:38px;
+      border-radius:12px;
+      display:flex; align-items:center; justify-content:center;
+      background:linear-gradient(135deg,#111,#1d1d1d);
+      border:1px solid rgba(183,255,60,.2);
+      color:var(--green);
+      font-weight:900;
+    }
+
+    .logo h1{ font-size:1rem; letter-spacing:1px; }
+
+    .header-right{ display:flex; align-items:center; gap:14px; }
+
+    .ws-status{
+      display:flex; align-items:center; gap:6px;
+      font-size:.72rem; color:var(--muted);
+      padding:6px 12px;
+      border-radius:20px;
+      background:rgba(255,255,255,.03);
+      border:1px solid var(--border);
+    }
+
+    .ws-dot{
+      width:7px; height:7px;
+      border-radius:50%;
+      background:#666;
+      transition:.3s;
+    }
+
+    .ws-dot.connected{ background:var(--green); animation:pulse 2s ease-in-out infinite; }
+    .ws-dot.connecting{ background:#f5a623; animation:pulse 1s ease-in-out infinite; }
+
+    .search{ width:320px; max-width:100%; }
+
+    .search input{
+      width:100%; height:42px;
+      border:none; outline:none;
+      border-radius:14px;
+      background:rgba(255,255,255,.03);
+      border:1px solid var(--border);
+      color:var(--text);
+      padding:0 14px;
+      transition:.2s;
+      font-family:Inter,sans-serif;
+    }
+
+    .search input:focus{
+      border-color:rgba(183,255,60,.3);
+      box-shadow:0 0 0 4px rgba(183,255,60,.06);
+    }
+
+    .layout{ flex:1; display:flex; overflow:hidden; }
+
+    aside{
+      width:300px; flex-shrink:0;
+      border-right:1px solid var(--border);
+      background:rgba(10,10,10,.9);
+      overflow:hidden;
+      display:flex; flex-direction:column;
+    }
+
+    .sidebar-title{
+      padding:18px;
+      border-bottom:1px solid var(--border);
+      font-size:.72rem; letter-spacing:1.4px;
+      text-transform:uppercase;
+      color:var(--muted);
+    }
+
+    .session-list{ overflow-y:auto; padding:10px; flex:1; }
+
+    .session{
+      padding:14px; border-radius:18px;
+      margin-bottom:10px; cursor:pointer;
+      background:rgba(255,255,255,.02);
+      border:1px solid transparent;
+      transition:.2s;
+    }
+
+    .session:hover{
+      transform:translateY(-2px);
+      background:rgba(255,255,255,.03);
+      border-color:rgba(255,255,255,.05);
+    }
+
+    .session.active{
+      background:rgba(183,255,60,.08);
+      border-color:rgba(183,255,60,.15);
+    }
+
+    .session-title{ font-size:.85rem; font-weight:700; margin-bottom:6px; }
+    .session-meta{ font-size:.72rem; color:var(--muted); }
+
+    main{
+      flex:1; overflow:hidden;
+      display:flex; flex-direction:column;
+    }
+
+    .topbar{
+      padding:18px 24px;
+      border-bottom:1px solid var(--border);
+      background:rgba(10,10,10,.75);
+      backdrop-filter:blur(14px);
+      display:flex; align-items:center; justify-content:space-between;
+    }
+
+    .topbar h2{ font-size:1rem; margin-bottom:6px; }
+    .topbar p{ color:var(--muted); font-size:.8rem; }
+
+    .messages{ flex:1; overflow-y:auto; padding:28px; }
+    .messages::-webkit-scrollbar{ width:5px; }
+    .messages::-webkit-scrollbar-thumb{ background:#222; border-radius:999px; }
+
+    .message{ margin-bottom:18px; }
+
+    .message-head{
+      display:flex; align-items:center; gap:8px;
+      margin-bottom:8px;
+    }
+
+    .speaker{ font-size:.82rem; font-weight:700; color:var(--green); }
+    .time{ font-size:.7rem; color:var(--dim); }
+
+    .bubble{
+      max-width:900px;
+      padding:15px 16px;
+      border-radius:18px;
+      background:rgba(255,255,255,.03);
+      border:1px solid rgba(255,255,255,.05);
+      line-height:1.8;
+      font-size:.9rem;
+      box-shadow:var(--shadow);
+    }
+
+    .empty{
+      flex:1;
+      display:flex; align-items:center; justify-content:center;
+      flex-direction:column;
+      gap:16px; text-align:center;
+      padding:40px;
+    }
+
+    .empty-logo{
+      width:90px; height:90px;
+      border-radius:24px;
+      background:linear-gradient(135deg,#111,#1d1d1d);
+      border:1px solid rgba(183,255,60,.2);
+      display:flex; align-items:center; justify-content:center;
+      color:var(--green);
+      font-size:2rem; font-weight:900;
+    }
+
+    .empty p{ color:var(--muted); max-width:420px; line-height:1.7; }
+
+    footer{
+      height:50px;
+      border-top:1px solid var(--border);
+      display:flex; align-items:center; justify-content:center;
+      color:var(--dim);
+      font-size:.75rem;
+      flex-shrink:0;
+    }
+
+    .loading-spinner{
+      display:inline-block;
+      width:20px; height:20px;
+      border:2px solid var(--dim);
+      border-top-color:var(--green);
+      border-radius:50%;
+      animation:spin .8s linear infinite;
+      margin-right:8px;
+      vertical-align:middle;
+    }
+
+    @keyframes spin { to { transform:rotate(360deg); } }
+
+    @keyframes pulse {
+      0%,100%{ opacity:1; }
+      50%{ opacity:.3; }
+    }
+
+    .status-bar{
+      padding:8px 18px;
+      font-size:.72rem;
+      color:var(--muted);
+      border-bottom:1px solid var(--border);
+      background:rgba(10,10,10,.6);
+      display:flex; align-items:center; gap:6px;
+    }
+
+    .status-dot{
+      width:6px; height:6px;
+      border-radius:50%;
+      background:var(--green);
+      animation:pulse 2s ease-in-out infinite;
+    }
+
+    .new-msg{
+      animation:fadeIn .4s ease;
+    }
+
+    @keyframes fadeIn{
+      from{ opacity:0; transform:translateY(8px); }
+      to{ opacity:1; transform:translateY(0); }
+    }
+
+    @media(max-width:900px){ aside{ width:240px; } }
+
+    @media(max-width:700px){
+      .layout{ flex-direction:column; }
+      aside{ width:100%; height:220px; }
+      .messages{ padding:18px; }
+      header{ gap:12px; }
+      .search{ width:180px; }
+    }
+  </style>
+</head>
+
+<body>
+
+<header>
+  <div class="logo">
+    <div class="logo-box">R</div>
+    <h1>RAIKU LIVE</h1>
+  </div>
+
+  <div class="header-right">
+    <div class="ws-status">
+      <div class="ws-dot" id="wsDot"></div>
+      <span id="wsLabel">Connecting...</span>
+    </div>
+    <div class="search">
+      <input type="text" id="searchInput" placeholder="Search transcript..." />
+    </div>
+  </div>
+</header>
+
+<div class="layout">
+  <aside>
+    <div class="sidebar-title">Live Sessions</div>
+    <div class="session-list" id="sessionList"></div>
+  </aside>
+
+  <main id="mainPanel">
+    <div class="empty">
+      <div class="empty-logo">R</div>
+      <h2>Raiku Transcript Archive</h2>
+      <p>
+        <span class="loading-spinner"></span>
+        Loading sessions from liveness.cc...
+      </p>
+    </div>
+  </main>
+</div>
+
+<footer>
+  Realtime transcript viewer &middot; liveness.cc
+</footer>
+
+<script>
+
+const API_BASE = "https://app-ovoxxhmq.fly.dev";
+const WS_BASE = API_BASE.replace("https://", "wss://").replace("http://", "ws://");
+
+let SESSIONS = [];
+let currentSession = null;
+let ws = null;
+let wsReconnectTimer = null;
+
+function setWsStatus(state) {
+  const dot = document.getElementById("wsDot");
+  const label = document.getElementById("wsLabel");
+  dot.className = "ws-dot";
+  if (state === "connected") {
+    dot.classList.add("connected");
+    label.textContent = "Connected";
+  } else if (state === "connecting") {
+    dot.classList.add("connecting");
+    label.textContent = "Connecting...";
+  } else {
+    label.textContent = "Disconnected";
+  }
+}
+
+function connectWebSocket() {
+  if (ws && (ws.readyState === WebSocket.OPEN || ws.readyState === WebSocket.CONNECTING)) return;
+
+  setWsStatus("connecting");
+
+  try {
+    ws = new WebSocket(WS_BASE + "/ws/transcription");
+
+    ws.onopen = () => {
+      console.log("WebSocket connected");
+      setWsStatus("connected");
+      if (wsReconnectTimer) { clearTimeout(wsReconnectTimer); wsReconnectTimer = null; }
+    };
+
+    ws.onmessage = (event) => {
+      try {
+        const data = JSON.parse(event.data);
+        console.log("WS message:", data);
+
+        if (data.type === "transcription" && data.text) {
+          appendLiveMessage({
+            speaker: data.username || data.user || "Live",
+            text: data.text,
+            time: data.timestamp || new Date().toISOString()
+          });
+        }
+      } catch (err) {
+        console.warn("WS parse error:", err);
+      }
+    };
+
+    ws.onclose = () => {
+      console.log("WebSocket disconnected");
+      setWsStatus("disconnected");
+      wsReconnectTimer = setTimeout(connectWebSocket, 5000);
+    };
+
+    ws.onerror = (err) => {
+      console.warn("WebSocket error:", err);
+      setWsStatus("disconnected");
+    };
+  } catch (err) {
+    console.warn("WebSocket connect failed:", err);
+    setWsStatus("disconnected");
+    wsReconnectTimer = setTimeout(connectWebSocket, 5000);
+  }
+}
+
+function appendLiveMessage(log) {
+  const messagesEl = document.getElementById("messages");
+  if (!messagesEl) return;
+
+  const div = document.createElement("div");
+  div.className = "message new-msg";
+  div.innerHTML = `
+    <div class="message-head">
+      <div class="speaker">${escapeHtml(log.speaker)}</div>
+      <div class="time">${formatTime(log.time)}</div>
+    </div>
+    <div class="bubble">${escapeHtml(log.text)}</div>
+  `;
+  messagesEl.appendChild(div);
+  messagesEl.scrollTop = messagesEl.scrollHeight;
+}
+
+async function loadSessions() {
+  try {
+    const res = await fetch(API_BASE + "/api/sessions");
+    if (!res.ok) throw new Error("Failed to fetch sessions");
+    const data = await res.json();
+    SESSIONS = data;
+    renderSidebar();
+
+    if (SESSIONS.length && !currentSession) {
+      openSession(SESSIONS[0].id);
+    }
+  } catch (err) {
+    console.error("Load sessions error:", err);
+    document.getElementById("mainPanel").innerHTML = `
+      <div class="empty">
+        <div class="empty-logo">!</div>
+        <h2>Connection Issue</h2>
+        <p>${escapeHtml(err.message)}</p>
+        <p style="margin-top:12px;font-size:.78rem;color:var(--dim)">
+          Retrying in 10 seconds...
+        </p>
+      </div>
+    `;
+    setTimeout(loadSessions, 10000);
+  }
+}
+
+function renderSidebar() {
+  const el = document.getElementById("sessionList");
+  el.innerHTML = "";
+
+  SESSIONS.forEach(session => {
+    const div = document.createElement("div");
+    div.className = "session " + (currentSession === session.id ? "active" : "");
+
+    const date = new Date(session.startedAt);
+    const dateStr = date.toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" });
+    const channelName = session.voiceChannelName || "raiku-hall";
+    const duration = session.endedAt
+      ? formatDuration(new Date(session.endedAt) - new Date(session.startedAt))
+      : "Active";
+
+    div.innerHTML = `
+      <div class="session-title">${escapeHtml(dateStr)} - ${escapeHtml(channelName)}</div>
+      <div class="session-meta">${duration}${!session.endedAt ? ' <span style="color:var(--green)">&#9679;</span>' : ''}</div>
+    `;
+
+    div.onclick = () => openSession(session.id);
+    el.appendChild(div);
+  });
+}
+
+async function openSession(id) {
+  currentSession = id;
+  renderSidebar();
+
+  const session = SESSIONS.find(s => s.id === id);
+  if (!session) return;
+
+  const date = new Date(session.startedAt);
+  const dateStr = date.toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" });
+  const channelName = session.voiceChannelName || "raiku-hall";
+
+  document.getElementById("mainPanel").innerHTML = `
+    <div class="status-bar">
+      <div class="status-dot"></div>
+      Live &middot; Synced with liveness.cc
+    </div>
+    <div class="topbar">
+      <div>
+        <h2>${escapeHtml(dateStr)} - ${escapeHtml(channelName)}</h2>
+        <p>Loading transcript...</p>
+      </div>
+    </div>
+    <div class="messages" id="messages">
+      <div class="empty">
+        <span class="loading-spinner"></span>
+        <p>Loading messages...</p>
+      </div>
+    </div>
+  `;
+
+  try {
+    const res = await fetch(API_BASE + "/api/session/" + id + "/logs?limit=100");
+    const data = await res.json();
+
+    const logs = data.logs || data;
+    const logsArray = Array.isArray(logs) ? logs : [];
+
+    const topbarP = document.querySelector(".topbar p");
+    if (topbarP) topbarP.textContent = logsArray.length + " transcript messages";
+
+    const messagesEl = document.getElementById("messages");
+    messagesEl.innerHTML = "";
+
+    if (logsArray.length === 0) {
+      messagesEl.innerHTML = `
+        <div class="empty">
+          <p style="color:var(--muted)">No messages in this session yet.<br>
+          Real-time messages will appear here when the session is active.</p>
+        </div>
+      `;
+      return;
+    }
+
+    logsArray.forEach(log => {
+      const div = document.createElement("div");
+      div.className = "message";
+      div.innerHTML = `
+        <div class="message-head">
+          <div class="speaker">${escapeHtml(log.speakerUsername || log.speaker || log.username || "Unknown")}</div>
+          <div class="time">${formatTime(log.transcribedAt || log.timestamp || log.time || log.createdAt)}</div>
+        </div>
+        <div class="bubble">${escapeHtml(log.originalText || log.text || log.message || log.content || "")}</div>
+      `;
+      messagesEl.appendChild(div);
+    });
+
+    messagesEl.scrollTop = messagesEl.scrollHeight;
+
+  } catch (err) {
+    console.error("Load logs error:", err);
+    document.getElementById("messages").innerHTML = `
+      <div class="empty">
+        <p style="color:var(--muted)">Could not load transcript logs.<br>
+        Real-time messages will appear here via WebSocket.</p>
+      </div>
+    `;
+  }
+}
+
+function formatDuration(ms) {
+  const totalMinutes = Math.floor(ms / 60000);
+  if (totalMinutes < 60) return totalMinutes + " min";
+  const hours = Math.floor(totalMinutes / 60);
+  const mins = totalMinutes % 60;
+  if (hours < 24) return hours + "h " + mins + "m";
+  const days = Math.floor(hours / 24);
+  const remHours = hours % 24;
+  return days + "d " + remHours + "h";
+}
+
+function formatTime(date) {
+  if (!date) return "";
+  try {
+    return new Date(date).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
+  } catch { return ""; }
+}
+
+function escapeHtml(str) {
+  return String(str)
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;");
+}
+
+document.getElementById("searchInput").addEventListener("input", e => {
+  const value = e.target.value.toLowerCase();
+  const messages = document.querySelectorAll(".message");
+  messages.forEach(msg => {
+    const text = msg.textContent.toLowerCase();
+    msg.style.display = text.includes(value) ? "block" : "none";
+  });
+});
+
+// Init
+loadSessions();
+connectWebSocket();
+
+// Auto-refresh sessions every 60s
+setInterval(loadSessions, 60000);
+
+</script>
+
+</body>
+</html>
